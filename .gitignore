@@ -2,3 +2,6 @@ node_modules
 dist
 .env
 *.tif
+
+# Local Netlify folder
+.netlify
