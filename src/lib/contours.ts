@@ -106,9 +106,26 @@ export function buildContourLines(
     linewidth: config.lineWidth,
     vertexColors: true,
     worldUnits: false, // screen-space pixels
+    transparent: true,
+    depthWrite: false,
   })
   // Resolution must be set — critical for LineMaterial
   material.resolution.set(window.innerWidth, window.innerHeight)
+
+  // Fade lines on far side of sphere to near-invisible
+  // Patches LineMaterial's fragment shader — coupled to three.js shader source
+  material.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      'gl_FragColor = vec4( diffuseColor.rgb, alpha );',
+      `
+      vec3 surfaceNormal = normalize(worldPos.xyz);
+      vec3 viewDir = normalize(cameraPosition - worldPos.xyz);
+      float facing = dot(surfaceNormal, viewDir);
+      float fadeFactor = smoothstep(-0.05, 0.35, facing);
+      gl_FragColor = vec4( diffuseColor.rgb, alpha * fadeFactor );
+      `
+    )
+  }
 
   const mesh = new LineSegments2(geometry, material)
   return { mesh, material }
