@@ -117,11 +117,9 @@ export function buildContourLines(
   // Coupled to three.js LineMaterial shader source — pin version.
   material.onBeforeCompile = (shader) => {
     // Vertex shader: declare varying + compute world-space position
-    shader.vertexShader = shader.vertexShader.replace(
-      'varying float vLineDistance;',
-      `varying float vLineDistance;
-       varying vec3 vBackfaceWorldPos;`
-    )
+    // Prepend to avoid #ifdef USE_DASH scope — vLineDistance is conditional
+    shader.vertexShader =
+      'varying vec3 vBackfaceWorldPos;\n' + shader.vertexShader
     shader.vertexShader = shader.vertexShader.replace(
       'vec4 start = modelViewMatrix * vec4( instanceStart, 1.0 );',
       `vBackfaceWorldPos = ( modelMatrix * vec4( instanceStart, 1.0 ) ).xyz;
@@ -129,11 +127,8 @@ export function buildContourLines(
     )
 
     // Fragment shader: declare varying + fade alpha by facing ratio
-    shader.fragmentShader = shader.fragmentShader.replace(
-      'varying float vLineDistance;',
-      `varying float vLineDistance;
-       varying vec3 vBackfaceWorldPos;`
-    )
+    shader.fragmentShader =
+      'varying vec3 vBackfaceWorldPos;\n' + shader.fragmentShader
     shader.fragmentShader = shader.fragmentShader.replace(
       'gl_FragColor = vec4( diffuseColor.rgb, alpha );',
       `vec3 surfaceNormal = normalize(vBackfaceWorldPos);

@@ -71,6 +71,8 @@ export default function MarsGlobe() {
       })
       lineMaterial = material
       scene.add(mesh)
+    }).catch((err) => {
+      console.error('Failed to load/build Mars contours:', err)
     })
 
     // Resize handler
