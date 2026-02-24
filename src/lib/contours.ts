@@ -112,18 +112,35 @@ export function buildContourLines(
   // Resolution must be set — critical for LineMaterial
   material.resolution.set(window.innerWidth, window.innerHeight)
 
-  // Fade lines on far side of sphere to near-invisible
-  // Patches LineMaterial's fragment shader — coupled to three.js shader source
+  // Fade lines on far side of sphere to near-invisible.
+  // worldPos varying only exists under WORLD_UNITS, so we inject our own.
+  // Coupled to three.js LineMaterial shader source — pin version.
   material.onBeforeCompile = (shader) => {
+    // Vertex shader: declare varying + compute world-space position
+    shader.vertexShader = shader.vertexShader.replace(
+      'varying float vLineDistance;',
+      `varying float vLineDistance;
+       varying vec3 vBackfaceWorldPos;`
+    )
+    shader.vertexShader = shader.vertexShader.replace(
+      'vec4 start = modelViewMatrix * vec4( instanceStart, 1.0 );',
+      `vBackfaceWorldPos = ( modelMatrix * vec4( instanceStart, 1.0 ) ).xyz;
+       vec4 start = modelViewMatrix * vec4( instanceStart, 1.0 );`
+    )
+
+    // Fragment shader: declare varying + fade alpha by facing ratio
+    shader.fragmentShader = shader.fragmentShader.replace(
+      'varying float vLineDistance;',
+      `varying float vLineDistance;
+       varying vec3 vBackfaceWorldPos;`
+    )
     shader.fragmentShader = shader.fragmentShader.replace(
       'gl_FragColor = vec4( diffuseColor.rgb, alpha );',
-      `
-      vec3 surfaceNormal = normalize(worldPos.xyz);
-      vec3 viewDir = normalize(cameraPosition - worldPos.xyz);
-      float facing = dot(surfaceNormal, viewDir);
-      float fadeFactor = smoothstep(-0.05, 0.35, facing);
-      gl_FragColor = vec4( diffuseColor.rgb, alpha * fadeFactor );
-      `
+      `vec3 surfaceNormal = normalize(vBackfaceWorldPos);
+       vec3 viewDir = normalize(cameraPosition - vBackfaceWorldPos);
+       float facing = dot(surfaceNormal, viewDir);
+       float fadeFactor = smoothstep(-0.05, 0.35, facing);
+       gl_FragColor = vec4( diffuseColor.rgb, alpha * fadeFactor );`
     )
   }
 
